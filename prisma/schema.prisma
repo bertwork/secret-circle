@@ -1,0 +1,86 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Event {
+  id          String   @id @default(uuid()) @db.Uuid
+  title       String
+  description String?
+  giftWorth   Float?
+  code        String
+  startAt     DateTime
+
+  participants Participant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("events")
+}
+
+model Participant {
+  id       String  @id @default(uuid()) @db.Uuid
+  name     String
+  pin      String
+  revealed Boolean @default(false)
+
+  eventId String @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  assignedTo   GiftAssignment? @relation("GiverAssignments")
+  assignedFrom GiftAssignment? @relation("ReceiverAssignments")
+
+  rule       Rule[] @relation("ParticipantExclusions")
+  cannotDraw Rule[] @relation("TargetExclusions")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([eventId, pin])
+  @@index([eventId])
+  @@map("participants")
+}
+
+model GiftAssignment {
+  id String @id @default(uuid()) @db.Uuid
+
+  giverId String      @unique @db.Uuid
+  giver   Participant @relation("GiverAssignments", fields: [giverId], references: [id])
+
+  recieverId String      @unique @db.Uuid
+  reciever   Participant @relation("ReceiverAssignments", fields: [recieverId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("gift_assignments")
+}
+
+model Rule {
+  id String @id @default(uuid()) @db.Uuid
+
+  participantId String      @db.Uuid
+  participant   Participant @relation("ParticipantExclusions", fields: [participantId], references: [id])
+
+  targetId String      @db.Uuid
+  target   Participant @relation("TargetExclusions", fields: [targetId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([participantId, targetId])
+  @@index([participantId])
+  @@index([targetId])
+  @@map("rules")
+}
